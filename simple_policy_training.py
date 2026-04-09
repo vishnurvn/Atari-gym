@@ -3,6 +3,7 @@ import gymnasium as gym
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
+from torch.utils.tensorboard import SummaryWriter
 
 from models import SimplePolicy
 
@@ -13,6 +14,8 @@ BATCH_SIZE = 32
 
 policy = SimplePolicy(action_space)
 optimizer = optim.Adam(policy.parameters(), lr=0.001)
+logdir = "logs/assault-v5"
+file_writer = SummaryWriter()
 
 
 class TrajectoryData(Dataset):
@@ -40,6 +43,7 @@ def compute_loss(observations, weights, actions):
 
 
 train_env = gym.wrappers.TransformObservation(env, obs_transform, env.observation_space)
+train_env = gym.wrappers.ClipReward(train_env, min_reward=0.0, max_reward=1.0)
 
 for ep in range(num_episodes):
     done = False
@@ -74,6 +78,8 @@ for ep in range(num_episodes):
         episode_loss += loss
     optimizer.step()
 
-    print(
-        f"End of ep: {ep}, episode length: {len(episode_rewards)}, loss: {episode_loss}, reward: {sum(episode_rewards)}"
+    file_writer.add_scalars(
+        main_tag="episode",
+        tag_scalar_dict={"loss": episode_loss, "reward": sum(episode_rewards)},
+        global_step=ep,
     )
